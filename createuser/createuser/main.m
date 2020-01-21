@@ -32,7 +32,9 @@ ODNode * localDSNode() {
     if (mySession == nil) {
         return nil;
     }
-    NSError * err = nil;
+    // under ARC objc objects are initialized to nil by default.
+    // There is nothing wrong with explicitly setting it to nil, it's just not necessary.
+    NSError * err;
     ODNode *node = [ODNode nodeWithSession:mySession name:@"/Local/Default" error: &err];
     if (err != nil) {
         NSLog(@"Could not get local DS node: %@", err);
@@ -82,13 +84,14 @@ NSString * authAuthorityType(NSString * auth_authority_item) {
     // Returns 'type' of an authentication authority item
     // ie: ShadowHash, Kerberosv5, SecureToken, etc
     NSArray * items = [auth_authority_item componentsSeparatedByString:@";"];
+    // If items.count is < 2 this will crash.
     return items[1];
 }
 
 NSArray * mergeAuthenticationAuthorities(NSArray * managed_auth_authority, ODRecord * userRecord) {
     // Merge two authentication_authority values, giving precedence to the
     // managed_auth_authority
-    NSMutableArray * mergedAuthAuthorities = [NSMutableArray arrayWithArray: managed_auth_authority];
+    NSMutableArray * mergedAuthAuthorities = [managed_auth_authority mutableCopy];
     NSArray * existingAuthAuthority = getAttributeForUser(kAuthenticationAuthorityKey, userRecord);
     if (existingAuthAuthority != nil) {
         NSMutableArray * managedTypes = [NSMutableArray arrayWithCapacity: [managed_auth_authority count]];
@@ -158,7 +161,8 @@ int main(int argc, const char * argv[]) {
             return -1;
         }
         // attempt to read in the passed-in file
-        NSString * filename = [NSString stringWithCString:argv[1] encoding:NSUTF8StringEncoding];
+        // "boxing" a c string with @() is shorthand for creating an NSString*
+        NSString * filename = @(argv[1]);
         id userdata = readPlist(filename);
         if (userdata == nil) {
             return -1;
